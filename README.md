@@ -1,6 +1,8 @@
 # EventWise - Event Management and Tracking System
 
 ## Problem Statement Overview
+Managing large-scale events can often be overwhelming. From attendee registration and check-in to distributing lunch kits or swag bags, every process demands precision and speed. Relying on manual methods is time-consuming, error-prone, and inefficient, especially when managing multiple events or multi-day programs. There is a pressing need for a seamless, automated solution that simplifies event management, prevents duplication, and ensures an organized flow of operations.
+
 The goal was to design and build an Event Management Application that streamlines event flow using unique digital identifiers (QR codes) for attendees. The system needed to handle attendee onboarding via CSV, track registrations, manage kit/lunch distribution, and provide a central dashboard for event statistics.
 
 ## Solution Overview
@@ -35,11 +37,18 @@ EventWise is a Flask-based web application that:
   - Filterable attendee lists
   - Event-specific tracking
 
-### Bonus Features Implemented
-* Multi-day event support
-* Comprehensive PDF report generation
-* Offline-capable (SQLite database)
-* Responsive web interface
+### Unique Features Implemented
+ - Multi-event and Multi-day Handling: Supports various events and sessions across different days.
+ - Live Stats with Visualization: Pie charts and tables make the dashboard highly intuitive and easy to interpret data.
+ - Downloadable Reports: Export check-ins and distribution stats as PDF.
+ - Secure QR Code System: Each attendee gets a unique, tamper-proof QR code.
+ - Global Search & Filters: Easily find any attendee and check their real-time status.
+
+## Tech stack used:
+- Frontend: HTML, CSS, JavaScript
+- Backend: Python (Flask)
+- Database: SQLite
+- Libraries used: QRCode, ReportLab
 
 ## Installation & Setup
 
@@ -57,7 +66,7 @@ pip install flask qrcode[pil] reportlab
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/event_tracker.git
+git clone https://github.com/srinithi0406/Event_tracker.git
 cd event_tracker
 ```
 2. Install dependencies:
@@ -88,3 +97,6 @@ event_tracker/
 ├── app.py                # Main application file
 └── event_data.db         # SQLite database 
 ```
+
+## Demo link
+[Click here for the Demo link of the web application](https://drive.google.com/file/d/11W6Z19SkPeV7QYse6xqgtyy8VMZPnQtO/view?usp=drivesdk)
