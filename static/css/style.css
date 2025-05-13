@@ -1,4 +1,4 @@
-/* style.css - Enhanced EventWise Theme with Expanded Color Palette */
+/* style.css  */
 
 /* Reset default styles */
 * {
@@ -401,7 +401,7 @@ footer p {
   }
 }
 
-/* Fix for showing only active section */
+/* for showing only active section */
 .section {
   display: none;
   animation: fadeIn 0.5s ease-out forwards;
@@ -427,7 +427,7 @@ header img {
   margin-bottom: 0;
 }
 
-/* Enhanced Check-in Section */
+/* Check-in Section */
 #checkin-section.active {
   text-align: center;
   padding: 40px 20px;
@@ -733,8 +733,7 @@ select {
   animation: fadeIn 0.5s ease-in;
 }
 
-/* Upload CSV Section - Final Optimized Version */
-/* Upload CSV Section - Final Working Version */
+/* Upload CSV Section  */
 #upload-section.active {
   text-align: center;
   padding: 30px;
