@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EventWise - Smart Event Planner</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+<header>
+  <img src="{{ url_for('static', filename='EventWise.png') }}" alt="EventWise Logo">
+  <h1>EventWise</h1>
+  <p>Plan smarter, wiser, sharper</p>
+</header>
+
+<nav>
+  <a href="/" class="{{ 'active-link' if active_page == 'home' else '' }}">Home</a>
+  <a href="/upload_csv" class="{{ 'active-link' if active_page == 'upload_csv' else '' }}">Upload CSV</a>
+  <a href="/checkin" class="{{ 'active-link' if active_page == 'checkin' else '' }}">Check-in</a>
+  <a href="/kitbag" class="{{ 'active-link' if active_page == 'kitbag' else '' }}">Kitbag</a>
+  <a href="/dashboard" class="{{ 'active-link' if active_page == 'dashboard' else '' }}">Dashboard</a>
+</nav>
+
+<div class="container">
+  <!-- Home Section -->
+  <div id="home-section" class="section {{ 'active' if active_page == 'home' else '' }}">
+    <h2>Welcome to EventWise</h2>
+    <p>Your comprehensive solution for seamless event management. Track attendees, manage check-ins, and distribute kits with our intuitive platform.</p>
+    
+    <div class="home-features">
+      <div class="feature-card">
+        <i class="fas fa-user-check"></i>
+        <h3>Effortless Check-ins</h3>
+        <p>Quick and easy attendee registration with QR code scanning technology.</p>
+      </div>
+      
+      <div class="feature-card">
+        <i class="fas fa-chart-pie"></i>
+        <h3>Real-time Analytics</h3>
+        <p>Get instant insights into your event attendance and participation.</p>
+      </div>
+      
+      <div class="feature-card">
+        <i class="fas fa-qrcode"></i>
+        <h3>Smart Tracking</h3>
+        <p>Track kit distribution and other event resources with precision.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload CSV Section -->
+  <div id="upload-section" class="section {{ 'active' if active_page == 'upload_csv' else '' }}">
+    <h2>Upload Attendee CSV</h2>
+    <form action="/upload_csv" method="post" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="event_name">Event Name:</label>
+        <input type="text" id="event_name" name="event_name" required>
+      </div>
+      <div class="form-group">
+        <label for="event_day">Event Day:</label>
+        <input type="text" id="event_day" name="event_day" required>
+      </div>
+      <div class="form-group">
+        <label for="file">CSV File:</label>
+        <input type="file" name="file" required>
+      </div>
+      <button type="submit">Upload</button>
+    </form>
+  </div>
+
+  <!-- Check-In Section -->
+  <div id="checkin-section" class="section {{ 'active' if active_page == 'checkin' else '' }}">
+    <h2>QR Code Check-In</h2>
+    
+    <div class="form-group">
+      <label for="event-select-checkin">Select Event:</label>
+      <select id="event-select-checkin" class="event-select">
+        <option value="">Loading events...</option>
+      </select>
+    </div>
+    
+    <div class="scan-visual">
+      <p>Point camera at attendee's QR code</p>
+    </div>
+    
+    <button id="start-scan-btn-checkin" onclick="startScannerCheckin()">
+      <i class="fas fa-qrcode"></i> Start QR Scanner
+    </button>
+    
+    <div id="loading-checkin">
+      Initializing camera, please wait...
+    </div>
+    
+    <div id="qr-reader-checkin"></div>
+    
+    <div class="scan-instructions">
+      <h3>How to check-in:</h3>
+      <ol>
+        <li>Select the event from dropdown</li>
+        <li>Click "Start QR Scanner" button</li>
+        <li>Hold steady while scanning</li>
+        <li>Wait for confirmation message</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Kitbag Section -->
+  <div id="kitbag-section" class="section {{ 'active' if active_page == 'kitbag' else '' }}">
+    <h2>Kit Collection</h2>
+    
+    <div class="form-group">
+      <label for="event-select-kit">Select Event:</label>
+      <select id="event-select-kit" class="event-select">
+        <option value="">Loading events...</option>
+      </select>
+    </div>
+    
+    <div class="scan-visual">
+      <p>Scan QR code to confirm collection</p>
+    </div>
+    
+    <button id="start-scan-btn-kit" onclick="startScannerKit()">
+      <i class="fas fa-qrcode"></i> Start Kit Scanner
+    </button>
+    
+    <div id="loading-kit">
+      Initializing camera, please wait...
+    </div>
+    
+    <div id="qr-reader-kit"></div>
+    
+    <div class="scan-instructions">
+      <h3>Kit Distribution:</h3>
+      <ol>
+        <li>Select the event from dropdown</li>
+        <li>Scan the attendee's QR code</li>
+        <li>Confirm their identity</li>
+        <li>Hand them their kit</li>
+      </ol>
+    </div>
+  </div>
+
+<footer>
+  <p>&copy; 2025 EventWise. All rights reserved.</p>
+</footer>
+
+<script>
+  let qrReaderCheckin = null;
+  let qrReaderKit = null;
+  let isCheckinScanning = false;
+  let isKitScanning = false;
+
+  // Load events when page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    fetchEvents();
+  });
+
+  // Fetch events from backend
+  function fetchEvents() {
+    fetch('/get_events')
+      .then(response => response.json())
+      .then(events => {
+        const checkinSelect = document.getElementById('event-select-checkin');
+        const kitSelect = document.getElementById('event-select-kit');
+        
+        // Clear loading message
+        checkinSelect.innerHTML = '';
+        kitSelect.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select an event';
+        checkinSelect.appendChild(defaultOption.cloneNode(true));
+        kitSelect.appendChild(defaultOption.cloneNode(true));
+        
+        // Add events to dropdowns
+        events.forEach(event => {
+          const option = document.createElement('option');
+          option.value = event.id;
+          option.textContent = `${event.name} (${event.day})`;
+          checkinSelect.appendChild(option.cloneNode(true));
+          kitSelect.appendChild(option.cloneNode(true));
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching events:', error);
+        document.getElementById('event-select-checkin').innerHTML = '<option value="">Error loading events</option>';
+        document.getElementById('event-select-kit').innerHTML = '<option value="">Error loading events</option>';
+      });
+  }
+
+  function showAlert(message) {
+    const msg = message.toLowerCase();
+    const icon = msg.includes("already") ? 'warning' :
+                 msg.includes("success") || msg.includes("marked") ? 'success' : 'error';
+
+    Swal.fire({
+      title: "Result",
+      text: message,
+      icon: icon,
+      confirmButtonText: "OK"
+    });
+  }
+
+  function checkInFromQR(id) {
+    const eventId = document.getElementById("event-select-checkin").value;
+    if (!eventId) {
+      showAlert("Please select an event first");
+      document.getElementById("start-scan-btn-checkin").style.display = "inline-block";
+      return;
+    }
+
+    fetch('/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qr_data: id, event_id: eventId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      showAlert(data.message);
+      document.getElementById("start-scan-btn-checkin").style.display = "inline-block";
+    });
+  }
+
+  function collectKitFromQR(id) {
+    const eventId = document.getElementById("event-select-kit").value;
+    if (!eventId) {
+      showAlert("Please select an event first");
+      document.getElementById("start-scan-btn-kit").style.display = "inline-block";
+      return;
+    }
+
+    fetch('/kitbag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qr_data: id, event_id: eventId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      const msg = data.message.toLowerCase();
+      let icon = 'info';
+      let title = 'Kit Collection';
+      
+      if (msg.includes("already")) {
+        icon = 'warning';
+        title = 'Already Collected';
+      } else if (msg.includes("please check-in first")) {
+        icon = 'error';
+        title = 'Check-In Required';
+      } else if (msg.includes("success")) {
+        icon = 'success';
+        title = 'Success';
+      } else if (msg.includes("not found")) {
+        icon = 'error';
+        title = 'Not Found';
+      }
+
+      Swal.fire({
+        title: title,
+        text: data.message,
+        icon: icon,
+        confirmButtonText: 'OK'
+      });
+
+      if (icon === 'error' || icon === 'warning') {
+        document.getElementById("start-scan-btn-kit").style.display = "inline-block";
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      Swal.fire({
+        title: 'Error',
+        text: 'An error occurred during kit collection',
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
+      document.getElementById("start-scan-btn-kit").style.display = "inline-block";
+    });
+  }
+
+  function startScannerCheckin() {
+    const eventId = document.getElementById("event-select-checkin").value;
+    if (!eventId) {
+      showAlert("Please select an event first");
+      return;
+    }
+
+    document.getElementById("start-scan-btn-checkin").style.display = "none";
+    document.getElementById("loading-checkin").style.display = "block";
+    document.getElementById("qr-reader-checkin").style.display = "block";
+
+    try {
+      if (qrReaderCheckin && isCheckinScanning) {
+        qrReaderCheckin.stop().then(() => qrReaderCheckin.clear());
+      }
+    } catch (e) {
+      console.warn("Check-in scanner stop error (safe to ignore):", e);
+    }
+
+    qrReaderCheckin = new Html5Qrcode("qr-reader-checkin");
+    isCheckinScanning = true;
+
+    qrReaderCheckin.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      qrCodeMessage => {
+        isCheckinScanning = false;
+        qrReaderCheckin.stop().then(() => {
+          document.getElementById("qr-reader-checkin").style.display = "none";
+          checkInFromQR(qrCodeMessage);
+        });
+      }
+    ).then(() => {
+      document.getElementById("loading-checkin").style.display = "none";
+    }).catch(err => {
+      console.error("Check-in scanner error:", err);
+      showAlert("Camera error during check-in scan.");
+    });
+  }
+
+  function startScannerKit() {
+    const eventId = document.getElementById("event-select-kit").value;
+    if (!eventId) {
+      showAlert("Please select an event first");
+      return;
+    }
+
+    document.getElementById("start-scan-btn-kit").style.display = "none";
+    document.getElementById("loading-kit").style.display = "block";
+    document.getElementById("qr-reader-kit").style.display = "block";
+
+    try {
+      if (qrReaderKit && isKitScanning) {
+        qrReaderKit.stop().then(() => qrReaderKit.clear());
+      }
+    } catch (e) {
+      console.warn("Kit scanner stop error (safe to ignore):", e);
+    }
+
+    qrReaderKit = new Html5Qrcode("qr-reader-kit");
+    isKitScanning = true;
+
+    qrReaderKit.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      qrCodeMessage => {
+        isKitScanning = false;
+        qrReaderKit.stop().then(() => {
+          document.getElementById("qr-reader-kit").style.display = "none";
+          collectKitFromQR(qrCodeMessage);
+        });
+      }
+    ).then(() => {
+      document.getElementById("loading-kit").style.display = "none";
+    }).catch(err => {
+      console.error("Kit scanner error:", err);
+      showAlert("Camera error during kit scan.");
+    });
+  }
+</script>
+
+</body>
+</html>

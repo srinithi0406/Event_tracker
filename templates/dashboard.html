@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EventWise - Smart Event Planner</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+
+    .dashboard-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .dashboard-item {
+      width: 30%;
+      padding: 20px;
+      margin: 10px;
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .dashboard-item:hover {
+      background-color: #e0e0e0;
+    }
+
+    .details {
+      margin-top: 10px;
+      display: none;
+      text-align: left;
+    }
+
+    .details ul {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    .details li {
+      padding: 5px 0;
+      border-bottom: 1px solid #ccc;
+    }
+
+    #chart-container {
+      width: 50%;
+      margin: 40px auto;
+    }
+
+    /* Search styles */
+    .search-section {
+      margin: 20px 0;
+    }
+    
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .search-box input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
+    .filter-options {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .filter-options select {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      flex: 1;
+    }
+    
+    .clear-btn {
+      padding: 10px 20px;
+      background-color: #f0f0f0;
+      color: #333;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    .attendee-list {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 15px;
+      border: 1px solid #eee;
+      border-radius: 5px;
+      padding: 10px;
+    }
+
+    /* Global results section */
+    #global-results {
+      margin-bottom: 20px;
+    }
+
+    .event-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+    }
+
+    .event-selection {
+      text-align: center;
+      margin: 20px 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 5px;
+    }
+    
+    .event-selection select {
+      padding: 10px;
+      margin-right: 10px;
+      min-width: 300px;
+    }
+    
+    .event-selection button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    
+    .dashboard-content {
+      display: {{ 'block' if event_id else 'none' }};
+    }
+    
+    .no-events-message {
+      text-align: center;
+      margin: 50px 0;
+      color: #666;
+    }
+    
+  
+  .event-selection {
+    text-align: center;
+    margin: 40px auto;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    max-width: 600px;
+    border-top: 4px solid var(--primary-blue-light);
+  }
+
+  .event-selection h2 {
+    color: var(--primary-blue);
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+  }
+
+  .event-selection select {
+    padding: 12px 15px;
+    min-width: 300px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: linear-gradient(135deg, #f0f4ff, #e3e6ff);
+    box-shadow: 0 4px 6px rgba(110, 142, 251, 0.1);
+    margin-right: 10px;
+  }
+
+  .event-selection button {
+    padding: 12px 25px;
+    background: linear-gradient(135deg, var(--primary-blue-light), var(--primary-blue));
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(106, 130, 251, 0.3);
+  }
+
+  .event-selection button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(106, 130, 251, 0.4);
+  }
+
+  .no-events-message {
+    color: var(--accent-coral);
+    font-size: 1.1rem;
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 126, 95, 0.1);
+    border-radius: 8px;
+    display: inline-block;
+  }
+
+  </style>
+</head>
+<body>
+
+<header>
+  <img src="{{ url_for('static', filename='EventWise.png') }}" alt="EventWise Logo">
+  <h1>EventWise</h1>
+  <p>Plan smarter, wiser, sharper</p>
+</header>
+
+<nav>
+  <a href="/">Home</a>
+  <a href="/upload_csv">Upload CSV</a>
+  <a href="/checkin">Check-in</a>
+  <a href="/kitbag">Kitbag</a>
+  <a href="/dashboard" class="active-link">Dashboard</a>
+</nav>
+
+<div class="container">
+  {% if not event_id %}
+    <!-- Event Selection Form -->
+    <div class="event-selection">
+      <h2>Select an Event to View Dashboard</h2>
+      <form method="GET" action="/dashboard">
+        <select name="event_id" required>
+          <option value="">Select an event</option>
+          {% for event in events %}
+            <option value="{{ event[0] }}">{{ event[1] }} ({{ event[2] }})</option>
+          {% endfor %}
+        </select>
+        <button type="submit">View Dashboard</button>
+      </form>
+      {% if not events %}
+        <p class="no-events-message">No events found. Please upload a CSV file first.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Dashboard Content (only shown when event is selected) -->
+  <div class="dashboard-content">
+    <!-- Event Header -->
+    <div class="event-header">
+      <h2>{{ event_name }} - {{ event_day }}</h2>
+      <p>Event ID: {{ event_id }}</p>
+    </div>
+
+    <!-- Global Search Section -->
+    <div class="search-section">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search by name, email, or phone..." oninput="filterAttendees()">
+        <button class="clear-btn" onclick="clearSearch()">Clear</button>
+      </div>
+      
+      <div class="filter-options">
+        <select id="filterSelect" onchange="filterAttendees()">
+          <option value="all">All Attendees</option>
+          <option value="checkedin">Checked In Only (No Kit)</option>
+          <option value="checkedin_with_kit">Checked In + Kit Collected</option>
+          <option value="notcheckedin">Not Checked In</option>
+        </select>
+      </div>
+
+      <!-- Global Search Results -->
+      <div id="global-results">
+        <h3>Search Results</h3>
+        <div class="attendee-list">
+          <ul id="globalResultsList"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-container">
+      <div class="dashboard-item" onclick="toggleDetails('checkin-details')">
+        <h3>Total Attendees</h3>
+        <p>{{ stats.total }}</p>
+      </div>
+
+      <div class="dashboard-item" onclick="toggleDetails('checkedin-details')">
+        <h3>Checked In</h3>
+        <p>{{ stats.registered }}</p>
+      </div>
+
+      <div class="dashboard-item" onclick="toggleDetails('kits-details')">
+        <h3>Kits Collected</h3>
+        <p>{{ stats.kits }}</p>
+      </div>
+    </div>
+
+    <!-- Details Sections -->
+    <div id="checkin-details" class="details">
+      <h3>All Attendees</h3>
+      <div class="attendee-list">
+        <ul id="allAttendees">
+          {% for attendee in attendees %}
+            <li data-id="{{ attendee[0] }}" data-name="{{ attendee[1] }}" data-email="{{ attendee[2] }}" data-phone="{{ attendee[3] }}" data-registered="{{ attendee[6] }}" data-kit="{{ attendee[7] }}">
+              {{ attendee[1] }} - {{ attendee[2] }} - {{ attendee[3] }} 
+              <span style="color: {{ 'green' if attendee[6] else 'red' }}">({{ 'Checked In' if attendee[6] else 'Not Checked In' }})</span>
+              <span style="color: {{ 'blue' if attendee[7] else 'orange' }}">({{ 'Kit Collected' if attendee[7] else 'No Kit' }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div id="checkedin-details" class="details">
+      <h3>Checked-in Attendees</h3>
+      <div class="attendee-list">
+        <ul id="checkedInAttendees">
+          {% for attendee in registered_attendees %}
+            <li data-id="{{ attendee[0] }}" data-name="{{ attendee[1] }}" data-email="{{ attendee[2] }}" data-phone="{{ attendee[3] }}" data-kit="{{ attendee[7] }}">
+              {{ attendee[1] }} - {{ attendee[2] }} - {{ attendee[3] }}
+              <span style="color: {{ 'blue' if attendee[7] else 'orange' }}">({{ 'Kit Collected' if attendee[7] else 'No Kit' }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div id="kits-details" class="details">
+      <h3>Kits Collected</h3>
+      <div class="attendee-list">
+        <ul id="kitAttendees">
+          {% for attendee in kit_attendees %}
+            <li data-id="{{ attendee[0] }}" data-name="{{ attendee[1] }}" data-email="{{ attendee[2] }}" data-phone="{{ attendee[3] }}">
+              {{ attendee[1] }} - {{ attendee[2] }} - {{ attendee[3] }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Pie Chart -->
+    <div id="chart-container">
+      <canvas id="statsChart"></canvas>
+    </div>
+
+    {% if event_id %}
+  <div style="text-align: center; margin: 40px 0;">
+    <a href="/download_report/{{ event_id }}" class="download-btn" style="
+      padding: 12px 25px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      text-decoration: none;
+      border-radius: 30px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+      display: inline-block;
+  ">
+    Download PDF Report
+  </a>
+</div>
+{% endif %}
+
+    <a href="/">Back to Home</a>
+  </div>
+</div>
+
+<footer>
+  <p>&copy; 2025 EventWise. All rights reserved.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+<script>
+  {% if stats %}
+    // Define statsData 
+    const statsData = {
+      registered: {{ stats.registered }},
+      kits: {{ stats.kits }},
+      total: {{ stats.total }}
+    };
+
+    // Register the plugin
+    Chart.register(ChartDataLabels);
+
+    const ctx = document.getElementById('statsChart').getContext('2d');
+    const statsChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['Checked In', 'Kits Collected', 'Remaining'],
+        datasets: [{
+          label: 'Event Stats',
+          data: [
+            statsData.registered,
+            statsData.kits,
+            statsData.total - statsData.registered
+          ],
+          backgroundColor: ['#4caf50', '#2196f3', '#ff9800'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          },
+          title: {
+            display: true,
+            text: 'Event Participation Overview'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = context.raw || 0;
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = Math.round((value / total) * 100);
+                return `${label}: ${value} (${percentage}%)`;
+              }
+            }
+          },
+          datalabels: {
+            formatter: (value, context) => {
+              const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((value / total) * 100);
+              return `${value}\n(${percentage}%)`;
+            },
+            color: '#fff',
+            font: {
+              weight: 'bold',
+              size: 12
+            }
+          }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
+  {% endif %}
+
+
+  function toggleDetails(detailId) {
+    const details = document.querySelectorAll('.details');
+    details.forEach((detail) => {
+      if (detail.id === detailId) {
+        detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+      } else {
+        detail.style.display = 'none';
+      }
+    });
+  }
+
+  function filterAttendees() {
+    const searchTerm = document.getElementById('searchInput').value.toUpperCase();
+    const filterType = document.getElementById('filterSelect').value;
+    const resultsList = document.getElementById('globalResultsList');
+    resultsList.innerHTML = '';
+
+    const allItems = document.querySelectorAll('#allAttendees li');
+    let hasResults = false;
+
+    allItems.forEach(item => {
+      const name = item.getAttribute('data-name').toUpperCase();
+      const email = item.getAttribute('data-email').toUpperCase();
+      const phone = item.getAttribute('data-phone').toUpperCase();
+      const registered = item.getAttribute('data-registered') === '1';
+      const kit = item.getAttribute('data-kit') === '1';
+      
+      let matchesSearch = searchTerm === '' || 
+                         name.includes(searchTerm) || 
+                         email.includes(searchTerm) || 
+                         phone.includes(searchTerm);
+      
+      let matchesFilter = true;
+      switch(filterType) {
+        case 'checkedin': 
+          matchesFilter = registered && !kit;
+          break;
+        case 'checkedin_with_kit': 
+          matchesFilter = registered && kit;
+          break;
+        case 'notcheckedin': 
+          matchesFilter = !registered;
+          break;
+      }
+      
+      if (matchesSearch && matchesFilter) {
+        const clonedItem = item.cloneNode(true);
+        resultsList.appendChild(clonedItem);
+        hasResults = true;
+      }
+    });
+
+    document.getElementById('global-results').style.display = hasResults ? 'block' : 'none';
+  }
+  
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterSelect').value = 'all';
+    document.getElementById('globalResultsList').innerHTML = '';
+    document.getElementById('global-results').style.display = 'none';
+  }
+
+  // Initialize with no search results
+  document.getElementById('global-results').style.display = 'none';
+</script>
+
+</body>
+</html>
